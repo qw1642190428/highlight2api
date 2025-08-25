@@ -3,7 +3,7 @@ import base64
 import hashlib
 from typing import Dict, Any, List, Tuple, Union
 
-import httpx
+from curl_cffi import AsyncSession
 from fastapi import HTTPException
 from filetype import filetype
 from loguru import logger
@@ -17,7 +17,7 @@ file_upload_cache: Dict[str, Dict[str, str]] = {}
 
 async def download_image(url: str) -> bytes:
     """下载图片数据（bytes）"""
-    async with httpx.AsyncClient(verify=TLS_VERIFY, timeout=30.0) as client:
+    async with AsyncSession(verify=TLS_VERIFY, timeout=30.0) as client:
         resp = await client.get(url)
         resp.raise_for_status()
         return resp.content
@@ -53,7 +53,7 @@ async def prepare_file_upload(
         "User-Agent": USER_AGENT,
     }
     json_data = {"name": file_name, "type": mime_type, "size": file_size}
-    async with httpx.AsyncClient(verify=TLS_VERIFY, timeout=30.0) as client:
+    async with AsyncSession(verify=TLS_VERIFY, timeout=30.0, impersonate='chrome') as client:
         resp = await client.post(url, headers=headers, json=json_data)
         resp.raise_for_status()
         data = resp.json()
@@ -71,8 +71,8 @@ async def upload_file_to_url(upload_url: str, file_bytes: bytes, access_token: s
         "Content-Type": "application/octet-stream",
         "User-Agent": USER_AGENT,
     }
-    async with httpx.AsyncClient(verify=TLS_VERIFY, timeout=60.0) as client:
-        resp = await client.put(upload_url, content=file_bytes, headers=headers)
+    async with AsyncSession(verify=TLS_VERIFY, timeout=60.0, impersonate='chrome') as client:
+        resp = await client.put(upload_url, data=file_bytes, headers=headers)
         resp.raise_for_status()
         data = resp.json()
         if not data.get("success"):

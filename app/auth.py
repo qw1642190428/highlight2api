@@ -3,7 +3,8 @@ import json
 import time
 from typing import Dict, Any, Optional
 
-import httpx
+from curl_cffi import AsyncSession
+from curl_cffi.requests.exceptions import RequestException
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from loguru import logger
@@ -77,7 +78,7 @@ async def refresh_access_token(rt: str) -> str:
     headers = {"Content-Type": "application/json", "User-Agent": USER_AGENT}
     json_data = {"refreshToken": rt}
 
-    async with httpx.AsyncClient(verify=TLS_VERIFY, timeout=30.0) as client:
+    async with AsyncSession(verify=TLS_VERIFY, timeout=30.0, impersonate='chrome') as client:
         try:
             response = await client.post(url, headers=headers, json=json_data)
 
@@ -103,7 +104,7 @@ async def refresh_access_token(rt: str) -> str:
 
             return access_token
 
-        except httpx.HTTPError as e:
+        except RequestException as e:
             raise HTTPException(
                 status_code=500, detail=f"HTTP error during token refresh: {str(e)}"
             )

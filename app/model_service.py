@@ -1,6 +1,7 @@
 from typing import Dict, Any
 
-import httpx
+from curl_cffi import AsyncSession
+from curl_cffi.requests.exceptions import RequestException
 from fastapi import HTTPException
 
 from .config import HIGHLIGHT_BASE_URL, USER_AGENT, TLS_VERIFY
@@ -11,7 +12,7 @@ model_cache: Dict[str, Dict[str, Any]] = {}
 
 async def fetch_models_from_upstream(access_token: str) -> Dict[str, Dict[str, Any]]:
     """从上游获取模型列表"""
-    async with httpx.AsyncClient(verify=TLS_VERIFY, timeout=30.0) as client:
+    async with AsyncSession(verify=TLS_VERIFY, timeout=30.0, impersonate='chrome') as client:
         try:
             response = await client.get(
                 f"{HIGHLIGHT_BASE_URL}/api/v1/models",
@@ -41,7 +42,7 @@ async def fetch_models_from_upstream(access_token: str) -> Dict[str, Dict[str, A
 
             return model_cache
 
-        except httpx.HTTPError as e:
+        except RequestException as e:
             raise HTTPException(status_code=500, detail=f"获取模型列表失败: {str(e)}")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"获取模型列表失败: {str(e)}")

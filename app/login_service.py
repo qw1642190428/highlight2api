@@ -4,7 +4,7 @@ import re
 import uuid
 from typing import Dict, Any
 
-import httpx
+from curl_cffi import AsyncSession
 from loguru import logger
 
 from .config import HIGHLIGHT_BASE_URL, TLS_VERIFY
@@ -29,7 +29,7 @@ async def process_highlight_login(login_link: str) -> Dict[str, Any]:
             'amplitudeDeviceId': chrome_device_id,
         }
 
-        async with httpx.AsyncClient(verify=TLS_VERIFY, timeout=30.0) as client:
+        async with AsyncSession(verify=TLS_VERIFY, timeout=30.0, impersonate='chrome') as client:
             response = await client.post(
                 f'{HIGHLIGHT_BASE_URL}/api/v1/auth/exchange',
                 headers=headers,

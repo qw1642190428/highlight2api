@@ -3,7 +3,7 @@ import json
 import re
 import uuid
 
-import requests
+from curl_cffi import requests
 from loguru import logger
 
 
