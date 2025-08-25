@@ -1,6 +1,12 @@
 import json
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union, Callable
 
+from curl_cffi.requests.exceptions import RequestException
+from sse_starlette import EventSourceResponse
+from starlette.responses import JSONResponse
+
+from .config import MAX_RETRIES
+from .errors import HighlightError
 from .models import Message, OpenAITool
 
 
@@ -42,3 +48,65 @@ def format_openai_tools(tools: Optional[List[OpenAITool]]) -> List[Dict[str, Any
             highlight_tools.append(highlight_tool)
 
     return highlight_tools
+
+
+async def safe_stream_wrapper(
+        generator_func, *args, **kwargs
+) -> Union[EventSourceResponse, JSONResponse]:
+    """
+    安全的流响应包装器
+    先执行生成器获取第一个值，如果成功才创建流响应
+    """
+    # 创建生成器实例
+    generator = generator_func(*args, **kwargs)
+
+    # 尝试获取第一个值
+    first_item = await generator.__anext__()
+
+    # 如果成功获取第一个值，创建新的生成器包装原生成器
+    async def wrapped_generator():
+        # 先yield第一个值
+        yield first_item
+        # 然后yield剩余的值
+        async for item in generator:
+            yield item
+
+    # 创建流响应
+    return EventSourceResponse(
+        wrapped_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+async def error_wrapper(func: Callable, *args, **kwargs) -> Any:
+    for attempt in range(MAX_RETRIES + 1):  # 包含初始尝试，所以是 MAX_RETRIES + 1
+        try:
+            return await func(*args, **kwargs)
+        except (HighlightError, RequestException) as e:
+            # 如果已经达到最大重试次数，返回错误响应
+            if attempt == MAX_RETRIES:
+                if isinstance(e, HighlightError):
+                    return JSONResponse(
+                        e.to_openai_error(),
+                        status_code=e.response_status_code
+                    )
+                elif isinstance(e, RequestException):
+                    return JSONResponse(
+                        {
+                            'error': {
+                                'message': str(e),
+                                "type": "http_error",
+                                "code": "http_error"
+                            }
+                        },
+                        status_code=500
+                    )
+
+            if attempt < MAX_RETRIES:
+                continue
+    return None

@@ -1,18 +1,15 @@
-import json
 import time
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from loguru import logger
-from sse_starlette.sse import EventSourceResponse
 
 from identifier import get_identifier
-from ..auth import get_user_info_from_token, get_access_token, get_highlight_headers
+from ..auth import get_user_info_from_token, get_access_token
 from ..chat_service import stream_generator, non_stream_response
 from ..file_service import messages_image_upload
 from ..model_service import get_models
 from ..models import ChatCompletionRequest, ModelsResponse, Model
-from ..utils import format_messages_to_prompt, format_openai_tools
+from ..utils import format_messages_to_prompt, format_openai_tools, safe_stream_wrapper, error_wrapper
 
 router = APIRouter()
 security = HTTPBearer()
@@ -107,17 +104,10 @@ async def chat_completions(
     # logger.debug(json.dumps(highlight_data,ensure_ascii=False))
 
     if request.stream:
-        return EventSourceResponse(
-            stream_generator(highlight_data, access_token, identifier, request.model, rt),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            },
-        )
+        return await error_wrapper(safe_stream_wrapper, stream_generator, highlight_data, access_token, identifier,
+                                   request.model, rt)
     else:
-        return await non_stream_response(highlight_data, access_token, identifier, request.model, rt)
+        return await error_wrapper(non_stream_response, highlight_data, access_token, identifier, request.model, rt)
 
 
 @router.get("/health")

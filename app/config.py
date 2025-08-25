@@ -10,8 +10,10 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 
 # 网络配置
 TLS_VERIFY = os.environ.get("TLS_VERIFY", 'True').lower() == "true"
-DEBUG = os.environ.get("DEBUG", 'False').lower() == "true"
 
+DEBUG = os.environ.get("DEBUG", 'False').lower() == "true"
 if not DEBUG:
     logger.remove()
     logger.add(sys.stdout, level="INFO")
+
+MAX_RETRIES = int(os.environ.get("MAX_RETRIES", '1'))
