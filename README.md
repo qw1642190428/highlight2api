@@ -7,6 +7,15 @@
 ```bash
 docker run -d -p 8080:8080 --name highlight2api ghcr.io/jhhgiyv/highlight2api:latest
 ```
+自定义环境变量部署
+```bash
+docker run -d -p 8080:8080 \
+  -e DEBUG=true \
+  -e MAX_RETRIES=3 \
+  -e TLS_VERIFY=false \
+  --name highlight2api \
+  ghcr.io/jhhgiyv/highlight2api:latest
+```
 
 ## 📝 获取 API Key
 
@@ -21,3 +30,13 @@ docker run -d -p 8080:8080 --name highlight2api ghcr.io/jhhgiyv/highlight2api:la
 - ✅ 自动处理认证和令牌刷新
 - ✅ 内置文件缓存机制
 - ✅ 支持多模态对话
+
+## 环境变量配置
+
+| 环境变量          | 默认值     | 说明          |
+|---------------|---------|-------------|
+| `TLS_VERIFY`  | `True`  | 是否验证 TLS 证书 |
+| `DEBUG`       | `False` | 是否开启调试模式    |
+| `MAX_RETRIES` | `1`     | 最大重试次数      |
+
+
