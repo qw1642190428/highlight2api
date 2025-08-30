@@ -1,11 +1,14 @@
+import asyncio
 import time
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from starlette.responses import JSONResponse
 
 from identifier import get_identifier
 from ..auth import get_user_info_from_token, get_access_token
 from ..chat_service import stream_generator, non_stream_response
+from ..errors import HighlightError
 from ..file_service import messages_image_upload
 from ..model_service import get_models
 from ..models import ChatCompletionRequest, ModelsResponse, Model
@@ -39,6 +42,9 @@ async def list_models(credentials: HTTPAuthorizationCredentials = Depends(securi
     return ModelsResponse(object="list", data=model_list)
 
 
+chat_lock: dict[str, asyncio.Lock] = {}
+
+
 @router.post("/v1/chat/completions")
 async def chat_completions(
         request: ChatCompletionRequest,
@@ -58,56 +64,63 @@ async def chat_completions(
     user_id = user_info["user_id"]
     client_uuid = user_info["client_uuid"]
 
-    # 获取access token
-    access_token = await get_access_token(rt)
+    if rt not in chat_lock:
+        chat_lock[rt] = asyncio.Lock()
 
-    # 获取模型信息
-    models = await get_models(access_token)
-    model_info = models.get(request.model)
-    if not model_info:
-        raise HTTPException(
-            status_code=400, detail=f"Model '{request.model}' not found"
-        )
+    async with chat_lock[rt]:
+        # 获取access token
+        try:
+            access_token = await get_access_token(rt)
+        except HighlightError as e:
+            return JSONResponse(e.to_openai_error(),e.response_status_code)
 
-    model_id = model_info["id"]
-    # 将 OpenAI 格式的消息转换为单个提示
-    prompt = format_messages_to_prompt(request.messages)
+        # 获取模型信息
+        models = await get_models(access_token)
+        model_info = models.get(request.model)
+        if not model_info:
+            raise HTTPException(
+                status_code=400, detail=f"Model '{request.model}' not found"
+            )
 
-    # 处理tool
-    tools = format_openai_tools(request.tools)
+        model_id = model_info["id"]
+        # 将 OpenAI 格式的消息转换为单个提示
+        prompt = format_messages_to_prompt(request.messages)
 
-    # 处理图片
-    images = await messages_image_upload(request.messages, access_token)
-    attached_context = [
-        {
-            'type': 'image',
-            'fileId': image['fileId'],
-            'fileName': image['fileName']
-        } for image in images
-    ]
+        # 处理tool
+        tools = format_openai_tools(request.tools)
 
-    # 获取identifier
-    identifier = get_identifier(user_id, client_uuid)
+        # 处理图片
+        images = await messages_image_upload(request.messages, access_token)
+        attached_context = [
+            {
+                'type': 'image',
+                'fileId': image['fileId'],
+                'fileName': image['fileName']
+            } for image in images
+        ]
 
-    # 准备 Highlight 请求
-    highlight_data = {
-        "prompt": prompt,
-        "attachedContext": attached_context,
-        "modelId": model_id,
-        "additionalTools": tools,
-        "backendPlugins": [],
-        "useMemory": False,
-        "useKnowledge": False,
-        "ephemeral": True,
-        "timezone": "Asia/Hong_Kong",
-    }
-    # logger.debug(json.dumps(highlight_data,ensure_ascii=False))
+        # 获取identifier
+        identifier = get_identifier(user_id, client_uuid)
 
-    if request.stream:
-        return await error_wrapper(safe_stream_wrapper, stream_generator, highlight_data, access_token, identifier,
-                                   request.model, rt)
-    else:
-        return await error_wrapper(non_stream_response, highlight_data, access_token, identifier, request.model, rt)
+        # 准备 Highlight 请求
+        highlight_data = {
+            "prompt": prompt,
+            "attachedContext": attached_context,
+            "modelId": model_id,
+            "additionalTools": tools,
+            "backendPlugins": [],
+            "useMemory": False,
+            "useKnowledge": False,
+            "ephemeral": True,
+            "timezone": "Asia/Hong_Kong",
+        }
+        # logger.debug(json.dumps(highlight_data,ensure_ascii=False))
+
+        if request.stream:
+            return await error_wrapper(safe_stream_wrapper, stream_generator, highlight_data, access_token, identifier,
+                                       request.model, rt)
+        else:
+            return await error_wrapper(non_stream_response, highlight_data, access_token, identifier, request.model, rt)
 
 
 @router.get("/health")

@@ -1,3 +1,4 @@
+import base64
 import json
 from typing import List, Dict, Any, Optional, Union, Callable
 
@@ -5,7 +6,6 @@ from curl_cffi.requests.exceptions import RequestException
 from sse_starlette import EventSourceResponse
 from starlette.responses import JSONResponse
 
-from .config import MAX_RETRIES
 from .errors import HighlightError
 from .models import Message, OpenAITool
 
@@ -84,6 +84,7 @@ async def safe_stream_wrapper(
 
 
 async def error_wrapper(func: Callable, *args, **kwargs) -> Any:
+    from .config import MAX_RETRIES
     for attempt in range(MAX_RETRIES + 1):  # 包含初始尝试，所以是 MAX_RETRIES + 1
         try:
             return await func(*args, **kwargs)
@@ -110,3 +111,26 @@ async def error_wrapper(func: Callable, *args, **kwargs) -> Any:
             if attempt < MAX_RETRIES:
                 continue
     return None
+
+
+def decode_base64url_safe(data):
+    """使用安全的base64url解码"""
+    # 添加必要的填充
+    missing_padding = len(data) % 4
+    if missing_padding:
+        data += '=' * (4 - missing_padding)
+
+    return base64.urlsafe_b64decode(data)
+
+
+def check_ban_content(content: str) -> bool:
+    ban_strs = [
+        'Your account has been secured',
+        'To protect our community',
+        "Your account status has been updated to 'restricted'",
+        'support@highlight.ing'
+    ]
+    for ban_str in ban_strs:
+        if ban_str in content:
+            return True
+    return False

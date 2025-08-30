@@ -7,10 +7,11 @@ from curl_cffi import AsyncSession, Response
 from fastapi.responses import JSONResponse
 from loguru import logger
 
-from .auth import get_access_token, get_highlight_headers
+from .auth import get_access_token, get_highlight_headers, set_ban_rt
 from .config import HIGHLIGHT_BASE_URL, TLS_VERIFY
 from .errors import HighlightError
 from .models import ChatCompletionResponse, Choice, Usage
+from .utils import check_ban_content
 
 
 async def parse_sse_line(line: str) -> Optional[str]:
@@ -27,6 +28,8 @@ async def stream_generator(
     """生成流式响应"""
     response_id = f"chatcmpl-{str(uuid.uuid4())}"
     created = int(time.time())
+
+    full_content = ""
 
     for i in range(2):
         # 使用httpx的流式请求
@@ -72,9 +75,10 @@ async def stream_generator(
                                             }
                                         ],
                                     }
-                                    yield {"event": "data", "data": json.dumps(initial_chunk)}
+                                    yield {"data": json.dumps(initial_chunk)}
                                 content = event_data.get("content", "")
                                 if content:
+                                    full_content += content
                                     chunk_data = {
                                         "id": response_id,
                                         "object": "chat.completion.chunk",
@@ -137,6 +141,8 @@ async def stream_generator(
                     "model": model,
                     "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
                 }
+                if check_ban_content(full_content):
+                    set_ban_rt(rt)
                 yield {"data": json.dumps(final_chunk)}
                 yield {"data": "[DONE]"}
                 return
@@ -202,6 +208,10 @@ async def non_stream_response(
             message_content["content"] = full_response
         if tool_calls:
             message_content["tool_calls"] = tool_calls
+
+        if check_ban_content(full_response):
+            set_ban_rt(rt)
+            raise HighlightError(200,'HighlightAI account suspended',400)
 
         response_data = ChatCompletionResponse(
             id=response_id,

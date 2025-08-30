@@ -10,8 +10,9 @@ from fastapi.security import HTTPAuthorizationCredentials
 from loguru import logger
 
 from .config import HIGHLIGHT_BASE_URL, USER_AGENT, TLS_VERIFY
+from .errors import HighlightError
 
-# 存储格式：{rt: {"access_token": str, "expires_at": int}}
+# 存储格式：{rt: {"access_token": str, "expires_at": int,"is_ban":bool}}
 access_tokens: Dict[str, Dict[str, Any]] = {}
 
 
@@ -25,28 +26,6 @@ def parse_api_key(api_key_base64: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def parse_jwt_payload(jwt_token: str) -> Optional[Dict[str, Any]]:
-    """解析JWT token的payload部分"""
-    try:
-        # JWT格式：header.payload.signature
-        parts = jwt_token.split(".")
-        if len(parts) != 3:
-            return None
-
-        # 解析payload部分（第二部分）
-        payload = parts[1]
-        # 补齐base64编码所需的padding
-        padding = len(payload) % 4
-        if padding:
-            payload += "=" * (4 - padding)
-
-        decoded_bytes = base64.urlsafe_b64decode(payload)
-        payload_data = json.loads(decoded_bytes)
-        return payload_data
-    except Exception:
-        return None
-
-
 async def get_user_info_from_token(credentials: HTTPAuthorizationCredentials) -> Dict[str, Any]:
     """从认证令牌中获取用户信息"""
     token = credentials.credentials
@@ -55,18 +34,6 @@ async def get_user_info_from_token(credentials: HTTPAuthorizationCredentials) ->
     user_info = parse_api_key(token)
     if user_info:
         return user_info
-
-    # 尝试解析为JWT token
-    jwt_payload = parse_jwt_payload(token)
-    if jwt_payload:
-        # 从JWT payload中提取必要信息
-        # 这里需要根据实际的JWT结构来调整
-        return {
-            "rt": jwt_payload.get("rt"),
-            "user_id": jwt_payload.get("user_id"),
-            "client_uuid": jwt_payload.get("client_uuid"),
-            "email": jwt_payload.get("email"),
-        }
 
     raise HTTPException(status_code=401, detail="Invalid authorization token format")
 
@@ -100,7 +67,7 @@ async def refresh_access_token(rt: str) -> str:
             expires_at = int(time.time()) + expires_in - 60  # 提前1分钟过期
 
             # 更新缓存
-            access_tokens[rt] = {"access_token": access_token, "expires_at": expires_at}
+            access_tokens[rt] = {"access_token": access_token, "expires_at": expires_at, "is_ban": False}
 
             return access_token
 
@@ -120,11 +87,22 @@ async def get_access_token(rt: str, refresh=False) -> str:
     # 检查缓存
     if rt in access_tokens:
         token_info = access_tokens[rt]
+        is_ban = token_info.get("is_ban", False)
+        if is_ban:
+            raise HighlightError(200,'HighlightAI account suspended',400)
         if current_time < token_info["expires_at"]:
             return token_info["access_token"]
 
     # 缓存过期或不存在，刷新token
     return await refresh_access_token(rt)
+
+
+def set_ban_rt(rt: str):
+    access_tokens[rt]['is_ban'] = True
+
+
+def is_ban_rt(rt: str):
+    return access_tokens[rt]['is_ban']
 
 
 def get_highlight_headers(access_token: str, identifier: str) -> Dict[str, str]:
