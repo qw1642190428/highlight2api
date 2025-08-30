@@ -129,7 +129,10 @@ def check_ban_content(content: str) -> bool:
         'To protect our community',
         "Your account status has been updated to 'restricted'",
         'support@highlight.ing',
-        'We’ve detected unusual'
+        'We’ve detected unusual',
+        'support@highlightai.com',
+        "We've temporarily restricted access",
+        "due to suspicious activity."
     ]
     for ban_str in ban_strs:
         if ban_str in content:
