@@ -89,7 +89,7 @@ async def get_access_token(rt: str, refresh=False) -> str:
         token_info = access_tokens[rt]
         is_ban = token_info.get("is_ban", False)
         if is_ban:
-            raise HighlightError(200,'HighlightAI account suspended',400)
+            raise HighlightError(200,'HighlightAI account suspended',403)
         if current_time < token_info["expires_at"]:
             return token_info["access_token"]
 

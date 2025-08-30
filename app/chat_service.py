@@ -211,7 +211,7 @@ async def non_stream_response(
 
         if check_ban_content(full_response):
             set_ban_rt(rt)
-            raise HighlightError(200,'HighlightAI account suspended',400)
+            raise HighlightError(200,'HighlightAI account suspended',403)
 
         response_data = ChatCompletionResponse(
             id=response_id,
