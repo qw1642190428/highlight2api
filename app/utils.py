@@ -124,21 +124,8 @@ def decode_base64url_safe(data):
 
 
 def check_ban_content(content: str) -> bool:
-    ban_strs = [
-        'Your account has been secured',
-        'To protect our community',
-        "Your account status has been updated to 'restricted'",
-        'support@highlight.ing',
-        'We’ve detected unusual',
-        'support@highlightai.com',
-        "We've temporarily restricted access",
-        "due to suspicious activity.",
-        "Highlight support",
-        'Your account access is limited',
-        "our support team",
-        "We’ve detected unusual activity",
-        "have restricted access"
-    ]
+    from .config import BAN_STRS
+    ban_strs = BAN_STRS
     for ban_str in ban_strs:
         if ban_str in content:
             return True
