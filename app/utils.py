@@ -134,7 +134,10 @@ def check_ban_content(content: str) -> bool:
         "We've temporarily restricted access",
         "due to suspicious activity.",
         "Highlight support",
-        'Your account access is limited'
+        'Your account access is limited',
+        "our support team",
+        "We’ve detected unusual activity",
+        "have restricted access"
     ]
     for ban_str in ban_strs:
         if ban_str in content:
