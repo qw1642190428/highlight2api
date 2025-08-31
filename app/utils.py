@@ -132,7 +132,9 @@ def check_ban_content(content: str) -> bool:
         'We’ve detected unusual',
         'support@highlightai.com',
         "We've temporarily restricted access",
-        "due to suspicious activity."
+        "due to suspicious activity.",
+        "Highlight support",
+        'Your account access is limited'
     ]
     for ban_str in ban_strs:
         if ban_str in content:
