@@ -62,6 +62,7 @@ class ChatCompletionRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     login_link: str = Field(description="登录链接，格式：https://highlightai.com/deeplink?code=xxxxxxx")
+    proxy: str | None = Field(description="使用的代理", default=None)
 
 
 class LoginResponse(BaseModel):

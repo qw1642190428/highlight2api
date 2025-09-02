@@ -63,6 +63,7 @@ async def chat_completions(
     rt = user_info["rt"]
     user_id = user_info["user_id"]
     client_uuid = user_info["client_uuid"]
+    proxy = user_info.get("proxy")
 
     if rt not in chat_lock:
         chat_lock[rt] = asyncio.Lock()
@@ -70,12 +71,12 @@ async def chat_completions(
     async with chat_lock[rt]:
         # 获取access token
         try:
-            access_token = await get_access_token(rt)
+            access_token = await get_access_token(rt, proxy)
         except HighlightError as e:
-            return JSONResponse(e.to_openai_error(),e.response_status_code)
+            return JSONResponse(e.to_openai_error(), e.response_status_code)
 
         # 获取模型信息
-        models = await get_models(access_token)
+        models = await get_models(access_token, proxy)
         model_info = models.get(request.model)
         if not model_info:
             raise HTTPException(
@@ -90,7 +91,7 @@ async def chat_completions(
         tools = format_openai_tools(request.tools)
 
         # 处理图片
-        images = await messages_image_upload(request.messages, access_token)
+        images = await messages_image_upload(request.messages, access_token, proxy)
         attached_context = [
             {
                 'type': 'image',
@@ -118,9 +119,10 @@ async def chat_completions(
 
         if request.stream:
             return await error_wrapper(safe_stream_wrapper, stream_generator, highlight_data, access_token, identifier,
-                                       request.model, rt)
+                                       request.model, rt, proxy)
         else:
-            return await error_wrapper(non_stream_response, highlight_data, access_token, identifier, request.model, rt)
+            return await error_wrapper(non_stream_response, highlight_data, access_token, identifier, request.model, rt,
+                                       proxy)
 
 
 @router.get("/health")

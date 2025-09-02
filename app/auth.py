@@ -39,7 +39,7 @@ async def get_user_info_from_token(credentials: HTTPAuthorizationCredentials) ->
     raise HTTPException(status_code=401, detail="Invalid authorization token format")
 
 
-async def refresh_access_token(rt: str) -> str:
+async def refresh_access_token(rt: str, proxy: str | None = None) -> str:
     """使用refresh token获取新的access token"""
     logger.debug(f"{rt} 刷新")
     url = f"{HIGHLIGHT_BASE_URL}/api/v1/auth/refresh"
@@ -48,7 +48,7 @@ async def refresh_access_token(rt: str) -> str:
 
     async with AsyncSession(verify=TLS_VERIFY, timeout=30.0, impersonate='chrome') as client:
         try:
-            response = await client.post(url, headers=headers, json=json_data)
+            response = await client.post(url, headers=headers, json=json_data, proxy=proxy)
 
             if response.status_code != 200:
                 raise HTTPException(
@@ -78,10 +78,10 @@ async def refresh_access_token(rt: str) -> str:
             )
 
 
-async def get_access_token(rt: str, refresh=False) -> str:
+async def get_access_token(rt: str, refresh=False, proxy: str = None) -> str:
     """获取access token（带缓存）"""
     if refresh:
-        return await refresh_access_token(rt)
+        return await refresh_access_token(rt, proxy)
 
     current_time = int(time.time())
 

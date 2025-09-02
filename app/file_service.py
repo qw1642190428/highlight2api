@@ -43,7 +43,7 @@ def detect_image_type_and_extension(image_bytes: bytes) -> tuple[str, str]:
 
 
 async def prepare_file_upload(
-        access_token: str, file_name: str, mime_type: str, file_size: int
+        access_token: str, file_name: str, mime_type: str, file_size: int, proxy=None
 ) -> Dict[str, Any]:
     """调用文件准备接口，申请上传链接"""
     url = f"{HIGHLIGHT_BASE_URL}/api/v1/files/prepare"
@@ -53,7 +53,7 @@ async def prepare_file_upload(
         "User-Agent": USER_AGENT,
     }
     json_data = {"name": file_name, "type": mime_type, "size": file_size}
-    async with AsyncSession(verify=TLS_VERIFY, timeout=30.0, impersonate='chrome') as client:
+    async with AsyncSession(verify=TLS_VERIFY, timeout=30.0, impersonate='chrome', proxy=proxy) as client:
         resp = await client.post(url, headers=headers, json=json_data)
         resp.raise_for_status()
         data = resp.json()
@@ -80,7 +80,7 @@ async def upload_file_to_url(upload_url: str, file_bytes: bytes, access_token: s
 
 
 async def upload_single_image(
-        access_token: str, image_data: str
+        access_token: str, image_data: str, proxy: str = None
 ) -> Dict[str, str]:
     """
     上传单张图片，支持base64和URL。
@@ -109,7 +109,7 @@ async def upload_single_image(
     file_name = f"image.{ext}"
     file_size = len(image_bytes)
     # 准备上传
-    upload_info = await prepare_file_upload(access_token, file_name, mime_type, file_size)
+    upload_info = await prepare_file_upload(access_token, file_name, mime_type, file_size, proxy)
     # 上传文件内容
     await upload_file_to_url(upload_info["uploadUrl"], image_bytes, access_token)
     result = {"fileName": file_name, "fileId": upload_info["id"]}
@@ -118,7 +118,7 @@ async def upload_single_image(
     return result
 
 
-async def messages_image_upload(messages: List[Message], access_token: str) -> List[Dict[str, str]]:
+async def messages_image_upload(messages: List[Message], access_token: str, proxy: str = None) -> List[Dict[str, str]]:
     """
     遍历消息，上传所有图片，返回文件名和文件ID列表
     每个元素示例：{"fileName": "...", "fileId": "..."}
@@ -144,7 +144,7 @@ async def messages_image_upload(messages: List[Message], access_token: str) -> L
     async def upload_wrapper(_url: str):
         async with semaphore:
             try:
-                return await upload_single_image(access_token, _url)
+                return await upload_single_image(access_token, _url, proxy)
             except Exception as e:
                 logger.exception(f"上传图片失败: {_url}", e)
                 return None

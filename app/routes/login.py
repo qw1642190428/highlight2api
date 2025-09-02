@@ -10,7 +10,7 @@ router = APIRouter()
 @router.post("/highlight_login_api", response_model=LoginResponse)
 async def highlight_login_api(request: LoginRequest):
     """Highlight 登录 API"""
-    result = await process_highlight_login(request.login_link)
+    result = await process_highlight_login(request.login_link, request.proxy)
 
     if result['success']:
         return LoginResponse(

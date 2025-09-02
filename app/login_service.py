@@ -10,7 +10,7 @@ from loguru import logger
 from .config import HIGHLIGHT_BASE_URL, TLS_VERIFY
 
 
-async def process_highlight_login(login_link: str) -> Dict[str, Any]:
+async def process_highlight_login(login_link: str, proxy=None) -> Dict[str, Any]:
     """处理 Highlight 登录流程"""
     try:
         # 提取 code
@@ -29,7 +29,7 @@ async def process_highlight_login(login_link: str) -> Dict[str, Any]:
             'amplitudeDeviceId': chrome_device_id,
         }
 
-        async with AsyncSession(verify=TLS_VERIFY, timeout=30.0, impersonate='chrome') as client:
+        async with AsyncSession(verify=TLS_VERIFY, timeout=30.0, impersonate='chrome', proxy=proxy) as client:
             response = await client.post(
                 f'{HIGHLIGHT_BASE_URL}/api/v1/auth/exchange',
                 headers=headers,
@@ -78,7 +78,8 @@ async def process_highlight_login(login_link: str) -> Dict[str, Any]:
                 'rt': rt,
                 'user_id': user_id,
                 'email': email,
-                'client_uuid': device_id
+                'client_uuid': device_id,
+                'proxy': proxy
             })
             api_key = base64.urlsafe_b64encode(data.encode('utf-8')).decode('utf-8')
 

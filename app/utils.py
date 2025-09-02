@@ -200,7 +200,7 @@ class CheckBanContent:
         "We’ve detected unusual activity on your account and have restricted access to certain features. Please contact our support team if you believe this is an error.",
         "Your account access is limited as a precaution against activity that may conflict with our guidelines. Contact Highlight support if you wish to dispute this action.",
         "We've applied a restriction to your account after detecting behavior outside our acceptable use policy. Please get in touch with us if you think this was applied incorrectly."
-        ]
+    ]
 
     def __new__(cls):
         if cls._instance is None:

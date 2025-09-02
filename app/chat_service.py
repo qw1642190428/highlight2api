@@ -23,7 +23,7 @@ async def parse_sse_line(line: str) -> Optional[str]:
 
 
 async def stream_generator(
-        highlight_data: Dict[str, Any], access_token: str, identifier: str, model: str, rt: str
+        highlight_data: Dict[str, Any], access_token: str, identifier: str, model: str, rt: str, proxy=None
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """生成流式响应"""
     response_id = f"chatcmpl-{str(uuid.uuid4())}"
@@ -35,7 +35,7 @@ async def stream_generator(
         # 使用httpx的流式请求
         headers = get_highlight_headers(access_token, identifier)
         tool_call_idx = 0
-        async with AsyncSession(verify=TLS_VERIFY, timeout=60, impersonate='chrome') as s:
+        async with AsyncSession(verify=TLS_VERIFY, timeout=60, impersonate='chrome', proxy=proxy) as s:
             async with s.stream('POST',
                                 HIGHLIGHT_BASE_URL + "/api/v1/chat",
                                 headers=headers,
@@ -159,7 +159,6 @@ async def stream_generator(
                             # 忽略无效的JSON数据
                             continue
 
-
                 if not full_content and not has_tool_use:
                     raise HighlightError(200, 'HighlightAI 空回复', 500)
 
@@ -182,12 +181,12 @@ async def stream_generator(
 
 
 async def non_stream_response(
-        highlight_data: Dict[str, Any], access_token: str, identifier: str, model: str, rt: str
+        highlight_data: Dict[str, Any], access_token: str, identifier: str, model: str, rt: str, proxy=None
 ) -> JSONResponse:  # type: ignore
     """处理非流式响应"""
     for i in range(2):
         headers = get_highlight_headers(access_token, identifier)
-        async with AsyncSession(verify=TLS_VERIFY, timeout=60, impersonate='chrome') as s:
+        async with AsyncSession(verify=TLS_VERIFY, timeout=60, impersonate='chrome', proxy=proxy) as s:
             async with s.stream('POST',
                                 HIGHLIGHT_BASE_URL + "/api/v1/chat",
                                 headers=headers,
