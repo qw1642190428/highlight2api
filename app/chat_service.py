@@ -11,7 +11,7 @@ from .auth import get_access_token, get_highlight_headers, set_ban_rt
 from .config import HIGHLIGHT_BASE_URL, TLS_VERIFY
 from .errors import HighlightError
 from .models import ChatCompletionResponse, Choice, Usage
-from .utils import check_ban_content, check_ban_delay, CheckBanContent, MatchResult
+from .utils import check_ban_delay, CheckBanContent, MatchResult
 
 
 async def parse_sse_line(line: str) -> Optional[str]:
@@ -55,6 +55,7 @@ async def stream_generator(
                 contents = []
 
                 content_tmp = ''
+                has_tool_use = False
 
                 async for line in response.aiter_lines():
                     line = line.decode("utf-8")
@@ -118,6 +119,7 @@ async def stream_generator(
                                     content_tmp = ''
                                     yield {"data": json.dumps(chunk_data)}
                             elif event_data.get("type") == "toolUse":
+                                has_tool_use = True
                                 tool_name = event_data.get("name", "")
                                 tool_id = event_data.get("toolId", "")
                                 tool_input = event_data.get("input", "")
@@ -156,6 +158,10 @@ async def stream_generator(
                         except json.JSONDecodeError:
                             # 忽略无效的JSON数据
                             continue
+
+
+                if not full_content and not has_tool_use:
+                    raise HighlightError(200, 'HighlightAI 空回复', 500)
 
                 # 发送完成消息
                 final_chunk = {
@@ -241,6 +247,10 @@ async def non_stream_response(
 
         # 构建消息内容
         message_content: Dict[str, any] = {"role": "assistant"}
+
+        if not tool_calls and not full_response:
+            raise HighlightError(200, 'HighlightAI 空回复', 500)
+
         if full_response:
             message_content["content"] = full_response
         if tool_calls:
