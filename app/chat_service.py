@@ -11,7 +11,7 @@ from .auth import get_access_token, get_highlight_headers, set_ban_rt
 from .config import HIGHLIGHT_BASE_URL, TLS_VERIFY
 from .errors import HighlightError
 from .models import ChatCompletionResponse, Choice, Usage
-from .utils import check_ban_content
+from .utils import check_ban_content, check_ban_delay, CheckBanContent, MatchResult
 
 
 async def parse_sse_line(line: str) -> Optional[str]:
@@ -50,6 +50,11 @@ async def stream_generator(
 
                 # 发送初始消息
                 is_send_initial_chunk = False
+                last_timestamp_ms = None
+                sse_content_time = []
+                contents = []
+
+                content_tmp = ''
 
                 async for line in response.aiter_lines():
                     line = line.decode("utf-8")
@@ -61,24 +66,42 @@ async def stream_generator(
                         try:
                             event_data = json.loads(data)
                             if event_data.get("type") == "text":
-                                if not is_send_initial_chunk:
-                                    initial_chunk = {
-                                        "id": response_id,
-                                        "object": "chat.completion.chunk",
-                                        "created": created,
-                                        "model": model,
-                                        "choices": [
-                                            {
-                                                "index": 0,
-                                                "delta": {"role": "assistant"},
-                                                "finish_reason": None,
-                                            }
-                                        ],
-                                    }
-                                    yield {"data": json.dumps(initial_chunk)}
                                 content = event_data.get("content", "")
                                 if content:
                                     full_content += content
+
+                                    match_result = CheckBanContent.get_instance().match_string_with_set(full_content)
+                                    now_timestamp_ms = int(time.time() * 1000)
+                                    if last_timestamp_ms:
+                                        # logger.debug(now_timestamp_ms - last_timestamp_ms)
+                                        sse_content_time.append(now_timestamp_ms - last_timestamp_ms)
+
+                                    last_timestamp_ms = now_timestamp_ms
+                                    contents.append(content)
+
+                                    if match_result == MatchResult.MATCH_SUCCESS:
+                                        set_ban_rt(rt)
+                                        raise HighlightError(200, 'HighlightAI account suspended', 403)
+                                    elif match_result == MatchResult.NEED_MORE_CONTENT:
+                                        content_tmp += content
+                                        continue
+
+                                    if not is_send_initial_chunk:
+                                        initial_chunk = {
+                                            "id": response_id,
+                                            "object": "chat.completion.chunk",
+                                            "created": created,
+                                            "model": model,
+                                            "choices": [
+                                                {
+                                                    "index": 0,
+                                                    "delta": {"role": "assistant"},
+                                                    "finish_reason": None,
+                                                }
+                                            ],
+                                        }
+                                        yield {"data": json.dumps(initial_chunk)}
+
                                     chunk_data = {
                                         "id": response_id,
                                         "object": "chat.completion.chunk",
@@ -87,11 +110,12 @@ async def stream_generator(
                                         "choices": [
                                             {
                                                 "index": 0,
-                                                "delta": {"content": content},
+                                                "delta": {"content": content_tmp + content},
                                                 "finish_reason": None,
                                             }
                                         ],
                                     }
+                                    content_tmp = ''
                                     yield {"data": json.dumps(chunk_data)}
                             elif event_data.get("type") == "toolUse":
                                 tool_name = event_data.get("name", "")
@@ -141,10 +165,13 @@ async def stream_generator(
                     "model": model,
                     "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
                 }
-                if check_ban_content(full_content):
-                    set_ban_rt(rt)
+                # if check_ban_content(full_content):
+                #     set_ban_rt(rt)
                 yield {"data": json.dumps(final_chunk)}
                 yield {"data": "[DONE]"}
+                # logger.debug(sse_content_time)
+                if check_ban_delay(sse_content_time, contents):
+                    set_ban_rt(rt)
                 return
 
 
@@ -170,6 +197,9 @@ async def non_stream_response(
                 # 收集完整响应
                 full_response = ""
                 tool_calls = []
+                last_timestamp_ms = None
+                sse_content_time = []
+                contents = []
 
                 async for line in response.aiter_lines():
                     line = line.decode("utf-8")
@@ -179,6 +209,13 @@ async def non_stream_response(
                         try:
                             event_data = json.loads(data)
                             if event_data.get("type") == "text":
+                                now_timestamp_ms = int(time.time() * 1000)
+                                if last_timestamp_ms:
+                                    # logger.debug(now_timestamp_ms - last_timestamp_ms)
+                                    sse_content_time.append(now_timestamp_ms - last_timestamp_ms)
+
+                                last_timestamp_ms = now_timestamp_ms
+                                contents.append(event_data.get("content", ""))
                                 full_response += event_data.get("content", "")
                             elif event_data.get("type") == "toolUse":
                                 tool_name = event_data.get("name", "")
@@ -209,9 +246,14 @@ async def non_stream_response(
         if tool_calls:
             message_content["tool_calls"] = tool_calls
 
-        if check_ban_content(full_response):
+        if check_ban_delay(sse_content_time, contents):
             set_ban_rt(rt)
-            raise HighlightError(200,'HighlightAI account suspended',403)
+            raise HighlightError(200, 'HighlightAI account suspended', 403)
+
+        match_result = CheckBanContent.get_instance().match_string_with_set(full_response)
+        if match_result == MatchResult.MATCH_SUCCESS:
+            set_ban_rt(rt)
+            raise HighlightError(200, 'HighlightAI account suspended', 403)
 
         response_data = ChatCompletionResponse(
             id=response_id,

@@ -12,5 +12,9 @@ RUN uv sync
 # 暴露 8080 端口
 EXPOSE 8080
 
+# 创建配置目录并添加挂载点
+RUN mkdir -p /app/config
+VOLUME ["/app/config"]
+
 # 启动 uv 运行 main.py
 CMD ["uv", "run", "main.py"]

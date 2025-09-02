@@ -4,17 +4,21 @@
 
 ## 🚀 一键部署
 
-```bash
-docker run -d -p 8080:8080 --name highlight2api ghcr.io/jhhgiyv/highlight2api:latest
-```
-自定义环境变量部署
-```bash
-docker run -d -p 8080:8080 \
-  -e DEBUG=true \
-  -e MAX_RETRIES=3 \
-  -e TLS_VERIFY=false \
-  --name highlight2api \
-  ghcr.io/jhhgiyv/highlight2api:latest
+docker compose
+```yaml
+version: '3.8'
+
+services:
+  highlight2api:
+    image: ghcr.io/jhhgiyv/highlight2api:latest
+    container_name: highlight2api
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config:/app/config
+    environment:
+      - DEBUG=false
+    restart: unless-stopped
 ```
 
 ## 📝 获取 API Key

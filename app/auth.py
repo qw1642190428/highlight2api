@@ -1,6 +1,7 @@
 import base64
 import json
 import time
+import uuid
 from typing import Dict, Any, Optional
 
 from curl_cffi import AsyncSession
@@ -42,7 +43,7 @@ async def refresh_access_token(rt: str) -> str:
     """使用refresh token获取新的access token"""
     logger.debug(f"{rt} 刷新")
     url = f"{HIGHLIGHT_BASE_URL}/api/v1/auth/refresh"
-    headers = {"Content-Type": "application/json", "User-Agent": USER_AGENT}
+    headers = {"Content-Type": "application/json", "User-Agent": USER_AGENT, "Idempotency-Key": str(uuid.uuid4())}
     json_data = {"refreshToken": rt}
 
     async with AsyncSession(verify=TLS_VERIFY, timeout=30.0, impersonate='chrome') as client:
@@ -89,7 +90,7 @@ async def get_access_token(rt: str, refresh=False) -> str:
         token_info = access_tokens[rt]
         is_ban = token_info.get("is_ban", False)
         if is_ban:
-            raise HighlightError(200,'HighlightAI account suspended',403)
+            raise HighlightError(200, 'HighlightAI account suspended', 403)
         if current_time < token_info["expires_at"]:
             return token_info["access_token"]
 
