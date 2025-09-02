@@ -19,6 +19,7 @@ async def fetch_models_from_upstream(access_token: str, proxy: str | None) -> Di
                 headers={
                     "Authorization": f"Bearer {access_token}",
                     "User-Agent": USER_AGENT,
+                    'api-version': '2025-07-22'
                 },
             )
 

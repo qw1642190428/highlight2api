@@ -24,8 +24,9 @@ async def list_models(credentials: HTTPAuthorizationCredentials = Depends(securi
     user_info = await get_user_info_from_token(credentials)
 
     rt = user_info["rt"]
+    proxy = user_info.get("proxy")
     access_token = await get_access_token(rt)
-    models = await get_models(access_token)
+    models = await get_models(access_token, proxy)
 
     # 构造返回数据
     model_list = []
