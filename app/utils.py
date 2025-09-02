@@ -93,7 +93,7 @@ async def error_wrapper(func: Callable, *args, **kwargs) -> Any:
             return await func(*args, **kwargs)
         except (HighlightError, RequestException) as e:
 
-            if isinstance(e,HighlightError):
+            if isinstance(e, HighlightError):
                 if 'HighlightAI account suspended' in e.message:
                     return JSONResponse(
                         e.to_openai_error(),
@@ -190,6 +190,16 @@ class MatchResult(Enum):
 class CheckBanContent:
     _instance = None
     _initialized = False
+    ban_contents = [
+        "We've temporarily restricted access to your account due to suspicious activity. If you think this is a mistake, please reach out to us via support@highlightai.com or Discord.",
+        "Our monitoring systems have detected behavior associated with policy violations, resulting in account restrictions being applied. For questions or to request a review, please contact us."
+        "Hey there! We’ve had to pause some of your account features due to activities that triggered our community guidelines. Think we made an error? Just shoot us a message using the help icon at the top right of this chat!",
+        "We’ve detected unusual activity on your account and have restricted access to certain features. Please contact our support team if you believe this is an error.",
+        "Your account access is limited as a precaution against activity that may conflict with our guidelines. Contact Highlight support if you wish to dispute this action.",
+        "We’ve restricted your Highlight account. If you believe you’re receiving this message in error, please contact our support team at support@highlightai.com.",
+        "We’ve detected unusual activity on your account and have restricted access to certain features. Please contact our support team if you believe this is an error.",
+        "Your account access is limited as a precaution against activity that may conflict with our guidelines. Contact Highlight support if you wish to dispute this action."
+        ]
 
     def __new__(cls):
         if cls._instance is None:
@@ -206,7 +216,7 @@ class CheckBanContent:
         path = Path('./config/ban_contents.json')
         if not path.is_file():
             with open(path, 'w', encoding='utf-8') as f:
-                json.dump([], f, ensure_ascii=False, indent=4)
+                json.dump(self.ban_contents, f, ensure_ascii=False, indent=4)
         with open(path, 'r', encoding='utf-8') as f:
             return set(json.load(f))  # 使用内置的 set() 而不是 Set()
 
