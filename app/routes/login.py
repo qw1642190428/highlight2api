@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, FileResponse
 
+from ..config import PROXY
 from ..login_service import process_highlight_login
 from ..models import LoginRequest, LoginResponse
 
@@ -10,7 +11,10 @@ router = APIRouter()
 @router.post("/highlight_login_api", response_model=LoginResponse)
 async def highlight_login_api(request: LoginRequest):
     """Highlight 登录 API"""
-    result = await process_highlight_login(request.login_link, request.proxy)
+    proxy = request.proxy
+    if not proxy and PROXY:
+        proxy = PROXY
+    result = await process_highlight_login(request.login_link, proxy)
 
     if result['success']:
         return LoginResponse(

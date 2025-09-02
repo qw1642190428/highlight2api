@@ -25,3 +25,5 @@ if not DEBUG:
 MAX_RETRIES = int(os.environ.get("MAX_RETRIES", '1'))
 BAN_STRS = json.loads(decode_base64url_safe(os.environ.get('BAN_STRS',
                                                            'WyJZb3VyIGFjY291bnQgaGFzIGJlZW4gc2VjdXJlZCIsICJUbyBwcm90ZWN0IG91ciBjb21tdW5pdHkiLCAiWW91ciBhY2NvdW50IHN0YXR1cyBoYXMgYmVlbiB1cGRhdGVkIHRvICdyZXN0cmljdGVkJyIsICJzdXBwb3J0QGhpZ2hsaWdodC5pbmciLCAiV2VcdTIwMTl2ZSBkZXRlY3RlZCB1bnVzdWFsIiwgInN1cHBvcnRAaGlnaGxpZ2h0YWkuY29tIiwgIldlJ3ZlIHRlbXBvcmFyaWx5IHJlc3RyaWN0ZWQgYWNjZXNzIiwgImR1ZSB0byBzdXNwaWNpb3VzIGFjdGl2aXR5LiIsICJIaWdobGlnaHQgc3VwcG9ydCIsICJZb3VyIGFjY291bnQgYWNjZXNzIGlzIGxpbWl0ZWQiLCAib3VyIHN1cHBvcnQgdGVhbSIsICJXZVx1MjAxOXZlIGRldGVjdGVkIHVudXN1YWwgYWN0aXZpdHkiLCAiaGF2ZSByZXN0cmljdGVkIGFjY2VzcyJd')))
+
+PROXY = os.environ.get('PROXY', '')

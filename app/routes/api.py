@@ -8,6 +8,7 @@ from starlette.responses import JSONResponse
 from identifier import get_identifier
 from ..auth import get_user_info_from_token, get_access_token
 from ..chat_service import stream_generator, non_stream_response
+from ..config import PROXY
 from ..errors import HighlightError
 from ..file_service import messages_image_upload
 from ..model_service import get_models
@@ -25,6 +26,8 @@ async def list_models(credentials: HTTPAuthorizationCredentials = Depends(securi
 
     rt = user_info["rt"]
     proxy = user_info.get("proxy")
+    if not proxy and PROXY:
+        proxy = PROXY
     access_token = await get_access_token(rt)
     models = await get_models(access_token, proxy)
 
@@ -64,7 +67,9 @@ async def chat_completions(
     rt = user_info["rt"]
     user_id = user_info["user_id"]
     client_uuid = user_info["client_uuid"]
-    proxy = user_info.get("proxy")
+    proxy = user_info.get('proxy')
+    if not proxy and PROXY:
+        proxy = PROXY
 
     if rt not in chat_lock:
         chat_lock[rt] = asyncio.Lock()
