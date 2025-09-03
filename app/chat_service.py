@@ -82,6 +82,7 @@ async def stream_generator(
 
                                     if match_result == MatchResult.MATCH_SUCCESS:
                                         set_ban_rt(rt)
+                                        response.close()
                                         raise HighlightError(200, 'HighlightAI account suspended', 403)
                                     elif match_result == MatchResult.NEED_MORE_CONTENT:
                                         content_tmp += content

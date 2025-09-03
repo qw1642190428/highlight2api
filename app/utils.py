@@ -231,6 +231,7 @@ class CheckBanContent:
         self.save_ban_content()
 
     def match_string_with_set(self, content: str) -> MatchResult:
+        from .config import MATCH_SUCCESS_LEN
         """
         根据输入的字符串和字符串集合进行匹配
 
@@ -257,7 +258,7 @@ class CheckBanContent:
 
         # 4. 检查是否有字符串满足长度条件（content长度 >= 目标字符串长度的50%）
         for s in matching_prefixes:
-            if len(content) >= len(s) * 0.5:
+            if len(content) >= len(s) * MATCH_SUCCESS_LEN:
                 return MatchResult.MATCH_SUCCESS
 
         # 5. content是多个字符串的开头，但长度都不满足50%条件
