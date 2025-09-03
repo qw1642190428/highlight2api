@@ -8,7 +8,7 @@ from starlette.responses import JSONResponse
 from identifier import get_identifier
 from ..auth import get_user_info_from_token, get_access_token
 from ..chat_service import stream_generator, non_stream_response
-from ..config import PROXY
+from ..config import PROXY, CHAT_SEMAPHORE
 from ..errors import HighlightError
 from ..file_service import messages_image_upload
 from ..model_service import get_models
@@ -46,7 +46,7 @@ async def list_models(credentials: HTTPAuthorizationCredentials = Depends(securi
     return ModelsResponse(object="list", data=model_list)
 
 
-chat_lock: dict[str, asyncio.Lock] = {}
+chat_lock: dict[str, asyncio.Semaphore] = {}
 
 
 @router.post("/v1/chat/completions")
@@ -72,7 +72,7 @@ async def chat_completions(
         proxy = PROXY
 
     if rt not in chat_lock:
-        chat_lock[rt] = asyncio.Lock()
+        chat_lock[rt] = asyncio.Semaphore(CHAT_SEMAPHORE)
 
     async with chat_lock[rt]:
         # 获取access token
