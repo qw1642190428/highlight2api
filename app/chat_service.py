@@ -41,6 +41,7 @@ async def stream_generator(
                                 headers=headers,
                                 json=highlight_data) as response:
                 response: Response
+                req_id = uuid.uuid4()
 
                 if response.status_code == 401 and i == 0:
                     access_token = await get_access_token(rt, True, proxy)
@@ -59,7 +60,7 @@ async def stream_generator(
 
                 async for line in response.aiter_lines():
                     line = line.decode("utf-8")
-                    logger.debug(line)
+                    logger.debug(f"req_id: {str(req_id)}, {line}")
 
                     # 解析SSE行
                     data = await parse_sse_line(line)
