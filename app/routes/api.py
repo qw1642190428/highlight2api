@@ -28,7 +28,7 @@ async def list_models(credentials: HTTPAuthorizationCredentials = Depends(securi
     proxy = user_info.get("proxy")
     if not proxy and PROXY:
         proxy = PROXY
-    access_token = await get_access_token(rt)
+    access_token = await get_access_token(rt, False, proxy)
     models = await get_models(access_token, proxy)
 
     # 构造返回数据
@@ -77,7 +77,7 @@ async def chat_completions(
     async with chat_lock[rt]:
         # 获取access token
         try:
-            access_token = await get_access_token(rt, proxy)
+            access_token = await get_access_token(rt, False, proxy)
         except HighlightError as e:
             return JSONResponse(e.to_openai_error(), e.response_status_code)
 

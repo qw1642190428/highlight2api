@@ -43,7 +43,7 @@ async def stream_generator(
                 response: Response
 
                 if response.status_code == 401 and i == 0:
-                    access_token = await get_access_token(rt, True)
+                    access_token = await get_access_token(rt, True, proxy)
                     continue
                 if response.status_code != 200:
                     raise HighlightError(response.status_code, response.text)
@@ -193,7 +193,7 @@ async def non_stream_response(
                                 json=highlight_data) as response:
                 response: Response
                 if response.status_code == 401 and i == 0:
-                    access_token = await get_access_token(rt, True)
+                    access_token = await get_access_token(rt, True, proxy)
                     continue
 
                 if response.status_code != 200:
