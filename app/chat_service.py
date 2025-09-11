@@ -47,7 +47,10 @@ async def stream_generator(
                     access_token = await get_access_token(rt, True, proxy)
                     continue
                 if response.status_code != 200:
-                    raise HighlightError(response.status_code, response.text)
+                    text = await response.atext()
+                    if 'Attention Required! | Cloudflare' in text:
+                        text = 'Cloudflare 403'
+                    raise HighlightError(response.status_code, text)
 
                 # 发送初始消息
                 is_send_initial_chunk = False
@@ -199,7 +202,10 @@ async def non_stream_response(
                     continue
 
                 if response.status_code != 200:
-                    raise HighlightError(response.status_code, response.text)
+                    text = await response.atext()
+                    if 'Attention Required! | Cloudflare' in text:
+                        text = 'Cloudflare 403'
+                    raise HighlightError(response.status_code, text)
 
                 # 收集完整响应
                 full_response = ""
