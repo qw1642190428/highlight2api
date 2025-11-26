@@ -8,7 +8,7 @@ from starlette.responses import JSONResponse
 from identifier import get_identifier
 from ..auth import get_user_info_from_token, get_access_token
 from ..chat_service import stream_generator, non_stream_response
-from ..config import PROXY, CHAT_SEMAPHORE
+from ..config import PROXY, CHAT_SEMAPHORE, DEFAULT_MAX_OUTPUT_TOKENS
 from ..errors import HighlightError
 from ..file_service import messages_image_upload
 from ..model_service import get_models
@@ -109,6 +109,9 @@ async def chat_completions(
         # 获取identifier
         identifier = get_identifier(user_id, client_uuid)
 
+        # 计算最大输出token，若用户未指定则使用默认值
+        max_output_tokens = request.max_tokens or DEFAULT_MAX_OUTPUT_TOKENS
+
         # 准备 Highlight 请求
         highlight_data = {
             "prompt": prompt,
@@ -120,6 +123,9 @@ async def chat_completions(
             "useKnowledge": False,
             "ephemeral": True,
             "timezone": "Asia/Hong_Kong",
+            "generationConfig": {
+                "maxOutputTokens": max_output_tokens
+            }
         }
         # logger.debug(json.dumps(highlight_data,ensure_ascii=False))
 

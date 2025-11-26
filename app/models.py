@@ -58,6 +58,10 @@ class ChatCompletionRequest(BaseModel):
     stream: Optional[bool] = False
     model: Optional[str] = "gpt-4o"
     tools: list[OpenAITool] | None = Field(None, description="可用工具定义")
+    max_tokens: Optional[int] = Field(
+        None,
+        description="最大输出token数，不传则使用服务端默认"
+    )
 
 
 class LoginRequest(BaseModel):

@@ -29,3 +29,4 @@ BAN_STRS = json.loads(decode_base64url_safe(os.environ.get('BAN_STRS',
 PROXY = os.environ.get('PROXY', '')
 MATCH_SUCCESS_LEN = float(os.environ.get('MATCH_SUCCESS_LEN', '0.5'))
 CHAT_SEMAPHORE = int(os.environ.get("CHAT_SEMAPHORE", '1'))
+DEFAULT_MAX_OUTPUT_TOKENS = int(os.environ.get("DEFAULT_MAX_OUTPUT_TOKENS", '12000'))
