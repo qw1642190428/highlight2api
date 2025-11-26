@@ -1,4 +1,5 @@
 import json
+from html import unescape
 import time
 import uuid
 from typing import Dict, Any, AsyncGenerator, Optional
@@ -71,7 +72,8 @@ async def stream_generator(
                         try:
                             event_data = json.loads(data)
                             if event_data.get("type") == "text":
-                                content = event_data.get("content", "")
+                                # 上游会把标签转成 HTML 实体，这里解码回原文
+                                content = unescape(event_data.get("content", ""))
                                 if content:
                                     full_content += content
 
@@ -222,14 +224,15 @@ async def non_stream_response(
                         try:
                             event_data = json.loads(data)
                             if event_data.get("type") == "text":
+                                content = unescape(event_data.get("content", ""))
                                 now_timestamp_ms = int(time.time() * 1000)
                                 if last_timestamp_ms:
                                     # logger.debug(now_timestamp_ms - last_timestamp_ms)
                                     sse_content_time.append(now_timestamp_ms - last_timestamp_ms)
 
                                 last_timestamp_ms = now_timestamp_ms
-                                contents.append(event_data.get("content", ""))
-                                full_response += event_data.get("content", "")
+                                contents.append(content)
+                                full_response += content
                             elif event_data.get("type") == "toolUse":
                                 tool_name = event_data.get("name", "")
                                 tool_id = event_data.get("toolId", "")
